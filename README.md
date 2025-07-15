@@ -4,7 +4,7 @@
 [![Flask](https://img.shields.io/badge/Flask-2.3+-green.svg)](https://flask.palletsprojects.com)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Arabic](https://img.shields.io/badge/Language-Arabic-orange.svg)](https://github.com)
-[![API](https://img.shields.io/badge/API-Ready-brightgreen.svg)](https://your-api-url.com)
+[![API](https://img.shields.io/badge/API-Live-brightgreen.svg)](https://qoute-genrator-gf24bzusj-hafeezqoutegenertors-projects.vercel.app)
 
 **API قابل للاستخدام مباشرة** لعرض اقتباسات من مشاهير العرب والمسلمين في ملفات README ومواقع الويب.
 
@@ -13,7 +13,7 @@
 أضف هذا السطر في ملف README الخاص بك:
 
 ```markdown
-![اقتباس يومي](https://your-api-url.com/api/quote/image)
+![اقتباس يومي](https://qoute-genrator-gf24bzusj-hafeezqoutegenertors-projects.vercel.app/api/quote/image)
 ```
 
 أو للحصول على اقتباس نصي:
@@ -35,7 +35,7 @@ GET /api/quote/image
 **مثال للاستخدام:**
 
 ```markdown
-![Quote](https://your-api-url.com/api/quote/image)
+![Quote](https://qoute-genrator-gf24bzusj-hafeezqoutegenertors-projects.vercel.app/api/quote/image)
 ```
 
 ### 🎲 اقتباس عشوائي JSON
