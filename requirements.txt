@@ -1,0 +1,20 @@
+# متطلبات API مولد اقتباسات المشاهير العرب المسلمين
+# Arabic Muslim Celebrities Quote Generator API Requirements
+
+# Flask للخدمة الويب
+flask>=2.3.0
+flask-cors>=4.0.0
+
+# Pillow لمعالجة الصور
+Pillow>=10.0.0
+
+# Requests للطلبات HTTP
+requests>=2.31.0
+
+# Gunicorn للإنتاج
+gunicorn>=21.0.0
+
+# للتطوير (اختياري)
+# For development (optional):
+# pytest>=7.0.0
+# black>=23.0.0

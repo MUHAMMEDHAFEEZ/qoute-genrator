@@ -1,0 +1,55 @@
+name: Update Daily Quote
+
+on:
+  schedule:
+    # يعمل يومياً في الساعة 6:00 صباحاً UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch: # يمكن تشغيله يدوياً
+
+jobs:
+  update-quote:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+        
+    - name: Generate new quote
+      run: |
+        python advanced_usage.py
+        
+    - name: Update README with new quote
+      run: |
+        # قراءة الاقتباس الجديد
+        QUOTE_CONTENT=$(cat readme_quote.md)
+        
+        # تحديث README.md - استبدال قسم "اقتباس اليوم" إذا كان موجوداً
+        if grep -q "<!-- Quote of the Day -->" README.md; then
+          # استبدال الاقتباس الموجود
+          sed -i '/<!-- Quote of the Day -->/,/^$/c\'"$QUOTE_CONTENT"'' README.md
+        else
+          # إضافة الاقتباس في نهاية الملف
+          echo "" >> README.md
+          echo "$QUOTE_CONTENT" >> README.md
+        fi
+        
+    - name: Commit and push changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add README.md quote_data.json readme_quote.md
+        
+        # التحقق من وجود تغييرات
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+        else
+          git commit -m "🌟 تحديث اقتباس اليوم - $(date +'%Y-%m-%d')"
+          git push
+        fi
