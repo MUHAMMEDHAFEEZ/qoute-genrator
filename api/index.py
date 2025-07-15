@@ -7,7 +7,6 @@ Arabic Quote Generator API for Vercel
 
 from flask import Flask, jsonify, request, Response
 import random
-import json
 from datetime import datetime
 
 app = Flask(__name__)
@@ -85,11 +84,11 @@ def create_quote_svg(quote, personality):
     
     # تقسيم النص لعدة أسطر إذا كان طويلاً
     lines = []
-    if len(quote) > 60:
+    if len(quote) > 50:
         words = quote.split()
         current_line = ""
         for word in words:
-            if len(current_line + " " + word) <= 60:
+            if len(current_line + " " + word) <= 50:
                 current_line += " " + word if current_line else word
             else:
                 lines.append(current_line)
@@ -100,49 +99,53 @@ def create_quote_svg(quote, personality):
         lines = [quote]
     
     # حساب الأبعاد
-    line_height = 30
-    padding = 40
+    line_height = 35
+    padding = 50
     width = 600
-    height = padding * 2 + len(lines) * line_height + 80  # 80 للمؤلف
+    height = padding * 2 + len(lines) * line_height + 100
     
-    svg = f'''<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">
+    svg = f'''<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
     <defs>
         <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
             <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
         </linearGradient>
+        <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="2" dy="2" stdDeviation="3" flood-color="rgba(0,0,0,0.3)"/>
+        </filter>
     </defs>
     
     <!-- خلفية -->
-    <rect width="100%" height="100%" fill="url(#bg)" rx="15"/>
+    <rect width="100%" height="100%" fill="url(#bg)" rx="20" filter="url(#shadow)"/>
     
     <!-- إطار -->
-    <rect x="10" y="10" width="{width-20}" height="{height-20}" 
-          fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2" rx="10"/>
+    <rect x="15" y="15" width="{width-30}" height="{height-30}" 
+          fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2" rx="15"/>
     
-    <!-- رمز الاقتباس -->
-    <text x="30" y="50" font-family="Arial, sans-serif" font-size="40" fill="#FFD700">"</text>
+    <!-- رمز الاقتباس الافتتاحي -->
+    <text x="40" y="60" font-family="Georgia, serif" font-size="50" fill="#FFD700" opacity="0.8">❝</text>
     '''
     
     # إضافة أسطر النص
-    y_pos = 80
-    for line in lines:
+    y_pos = 90
+    for i, line in enumerate(lines):
+        font_size = 20 if len(lines) <= 2 else 18
         svg += f'''
-    <text x="{width//2}" y="{y_pos}" font-family="Arial, sans-serif" font-size="18" 
-          fill="white" text-anchor="middle" direction="rtl">{line}</text>'''
+    <text x="{width//2}" y="{y_pos}" font-family="Arial, sans-serif" font-size="{font_size}" 
+          fill="white" text-anchor="middle" font-weight="400">{line}</text>'''
         y_pos += line_height
     
     # إضافة اسم المؤلف
     svg += f'''
-    <text x="{width//2}" y="{y_pos + 30}" font-family="Arial, sans-serif" font-size="16" 
+    <text x="{width//2}" y="{y_pos + 40}" font-family="Arial, sans-serif" font-size="18" 
           fill="#FFD700" text-anchor="middle" font-weight="bold">— {personality}</text>
     
     <!-- رمز الاقتباس الختامي -->
-    <text x="{width-50}" y="{height-30}" font-family="Arial, sans-serif" font-size="40" fill="#FFD700">"</text>
+    <text x="{width-60}" y="{height-40}" font-family="Georgia, serif" font-size="50" fill="#FFD700" opacity="0.8">❞</text>
     
     <!-- تاريخ التحديث -->
-    <text x="20" y="{height-10}" font-family="Arial, sans-serif" font-size="10" 
-          fill="rgba(255,255,255,0.7)">{datetime.now().strftime('%Y-%m-%d')}</text>
+    <text x="25" y="{height-15}" font-family="Arial, sans-serif" font-size="12" 
+          fill="rgba(255,255,255,0.6)">{datetime.now().strftime('%Y-%m-%d')}</text>
           
     </svg>'''
     
@@ -156,30 +159,62 @@ def home():
     <html dir="rtl" lang="ar">
     <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>API مولد اقتباسات المشاهير العرب</title>
         <style>
-            body { font-family: Arial; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                   color: white; padding: 20px; text-align: center; }
-            .container { max-width: 800px; margin: 0 auto; }
-            h1 { color: #FFD700; }
-            .endpoint { background: rgba(255,255,255,0.1); padding: 15px; margin: 10px;
-                       border-radius: 8px; }
+            body { 
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white; padding: 20px; text-align: center; margin: 0;
+                min-height: 100vh; display: flex; align-items: center; justify-content: center;
+            }
+            .container { 
+                max-width: 900px; margin: 0 auto; 
+                background: rgba(255,255,255,0.15); padding: 40px; 
+                border-radius: 20px; backdrop-filter: blur(10px);
+                box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            }
+            h1 { color: #FFD700; margin-bottom: 30px; font-size: 2.5em; }
+            .endpoint { 
+                background: rgba(255,255,255,0.2); padding: 20px; margin: 15px 0;
+                border-radius: 15px; border-left: 5px solid #FFD700;
+                text-align: right;
+            }
+            .endpoint h3 { color: #FFD700; margin-bottom: 10px; }
+            .endpoint p { font-family: 'Courier New', monospace; background: rgba(0,0,0,0.2); 
+                         padding: 10px; border-radius: 8px; }
+            .demo { margin: 30px 0; }
         </style>
     </head>
     <body>
         <div class="container">
             <h1>🌟 API مولد اقتباسات المشاهير العرب المسلمين</h1>
+            
+            <div class="demo">
+                <h2>🖼️ معاينة مباشرة:</h2>
+                <img src="/api/quote/image" alt="اقتباس ملهم" style="max-width: 100%; border-radius: 15px; margin: 20px 0;">
+            </div>
+            
             <div class="endpoint">
                 <h3>🖼️ صورة الاقتباس</h3>
-                <p>/api/quote/image</p>
+                <p>GET /api/quote/image</p>
             </div>
             <div class="endpoint">
                 <h3>📄 اقتباس JSON</h3>
-                <p>/api/quote</p>
+                <p>GET /api/quote</p>
             </div>
             <div class="endpoint">
                 <h3>👥 قائمة الشخصيات</h3>
-                <p>/api/personalities</p>
+                <p>GET /api/personalities</p>
+            </div>
+            <div class="endpoint">
+                <h3>🎯 اقتباس محدد</h3>
+                <p>GET /api/quote?personality=ابن_سينا</p>
+            </div>
+            
+            <div style="margin-top: 40px; font-size: 0.9em; opacity: 0.8;">
+                <p>🚀 جاهز للاستخدام في GitHub README ومواقع الويب</p>
+                <p>💡 استخدم: &lt;img src="YOUR_URL/api/quote/image" /&gt;</p>
             </div>
         </div>
     </body>
@@ -189,49 +224,84 @@ def home():
 @app.route('/api/quote')
 def api_quote():
     """API للحصول على اقتباس"""
-    personality_param = request.args.get('personality', '').replace('_', ' ')
-    
-    if personality_param:
-        personality, quote = get_quote_by_personality(personality_param)
-        if not personality:
-            return jsonify({
-                'error': 'الشخصية غير موجودة',
-                'available_personalities': list(quotes_data.keys())
-            }), 404
-    else:
-        personality, quote = get_random_quote()
-    
-    return jsonify({
-        'personality': personality,
-        'quote': quote,
-        'timestamp': datetime.now().isoformat(),
-        'language': 'ar'
-    })
+    try:
+        personality_param = request.args.get('personality', '').replace('_', ' ')
+        
+        if personality_param:
+            personality, quote = get_quote_by_personality(personality_param)
+            if not personality:
+                return jsonify({
+                    'error': 'الشخصية غير موجودة',
+                    'available_personalities': list(quotes_data.keys())
+                }), 404
+        else:
+            personality, quote = get_random_quote()
+        
+        return jsonify({
+            'personality': personality,
+            'quote': quote,
+            'timestamp': datetime.now().isoformat(),
+            'language': 'ar',
+            'status': 'success'
+        })
+    except Exception as e:
+        return jsonify({
+            'error': 'حدث خطأ في الخادم',
+            'details': str(e),
+            'status': 'error'
+        }), 500
 
 @app.route('/api/quote/image')
 def api_quote_image():
     """API للحصول على صورة SVG للاقتباس"""
-    personality_param = request.args.get('personality', '').replace('_', ' ')
-    
-    if personality_param:
-        personality, quote = get_quote_by_personality(personality_param)
-        if not personality:
+    try:
+        personality_param = request.args.get('personality', '').replace('_', ' ')
+        
+        if personality_param:
+            personality, quote = get_quote_by_personality(personality_param)
+            if not personality:
+                personality, quote = get_random_quote()
+        else:
             personality, quote = get_random_quote()
-    else:
-        personality, quote = get_random_quote()
-    
-    # إنشاء SVG
-    svg_content = create_quote_svg(quote, personality)
-    
-    return Response(svg_content, mimetype='image/svg+xml')
+        
+        # إنشاء SVG
+        svg_content = create_quote_svg(quote, personality)
+        
+        response = Response(svg_content, mimetype='image/svg+xml')
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        
+        return response
+    except Exception as e:
+        # إرجاع SVG خطأ
+        error_svg = f'''<svg width="600" height="200" xmlns="http://www.w3.org/2000/svg">
+            <rect width="100%" height="100%" fill="#ff6b6b"/>
+            <text x="300" y="100" font-family="Arial" font-size="18" fill="white" text-anchor="middle">
+                خطأ في تحميل الاقتباس
+            </text>
+            <text x="300" y="130" font-family="Arial" font-size="14" fill="white" text-anchor="middle">
+                {str(e)[:50]}
+            </text>
+        </svg>'''
+        return Response(error_svg, mimetype='image/svg+xml')
 
 @app.route('/api/personalities')
 def api_personalities():
     """API للحصول على قائمة الشخصيات"""
-    return jsonify({
-        'personalities': list(quotes_data.keys()),
-        'count': len(quotes_data)
-    })
+    try:
+        return jsonify({
+            'personalities': list(quotes_data.keys()),
+            'count': len(quotes_data),
+            'status': 'success'
+        })
+    except Exception as e:
+        return jsonify({
+            'error': 'حدث خطأ في الخادم',
+            'details': str(e),
+            'status': 'error'
+        }), 500
 
 @app.route('/health')
 def health_check():
@@ -239,13 +309,76 @@ def health_check():
     return jsonify({
         'status': 'healthy',
         'timestamp': datetime.now().isoformat(),
-        'service': 'Arabic Quote Generator API'
+        'service': 'Arabic Quote Generator API',
+        'version': '2.0'
     })
 
+@app.route('/api/info')
+def api_info():
+    """معلومات الـ API"""
+    return jsonify({
+        'name': 'Arabic Quote Generator API',
+        'version': '2.0',
+        'description': 'مولد اقتباسات المشاهير العرب المسلمين',
+        'endpoints': {
+            '/api/quote': 'اقتباس عشوائي JSON',
+            '/api/quote/image': 'صورة اقتباس SVG',
+            '/api/personalities': 'قائمة الشخصيات',
+            '/health': 'فحص صحة الخدمة'
+        },
+        'personalities_count': len(quotes_data),
+        'total_quotes': sum(len(quotes) for quotes in quotes_data.values())
+    })
+
+# For Vercel deployment
+if __name__ != '__main__':
+    # This is running on Vercel
+    app.debug = False
+
 # Vercel serverless function handler
-def handler(request):
-    """Handler for Vercel"""
-    return app(request.environ, lambda *args: None)
+def handler(event, context):
+    """Handler for Vercel serverless functions"""
+    from werkzeug.wrappers import Request, Response as WerkzeugResponse
+    from werkzeug.serving import WSGIRequestHandler
+    import io
+    
+    # Create a WSGI environ from the event
+    environ = {
+        'REQUEST_METHOD': event.get('httpMethod', 'GET'),
+        'PATH_INFO': event.get('path', '/'),
+        'QUERY_STRING': event.get('queryStringParameters', ''),
+        'CONTENT_TYPE': event.get('headers', {}).get('content-type', ''),
+        'CONTENT_LENGTH': str(len(event.get('body', ''))),
+        'HTTP_HOST': event.get('headers', {}).get('host', 'localhost'),
+        'SERVER_NAME': 'localhost',
+        'SERVER_PORT': '80',
+        'wsgi.version': (1, 0),
+        'wsgi.url_scheme': 'https',
+        'wsgi.input': io.StringIO(event.get('body', '')),
+        'wsgi.errors': io.StringIO(),
+        'wsgi.multithread': False,
+        'wsgi.multiprocess': True,
+        'wsgi.run_once': False
+    }
+    
+    # Add headers to environ
+    for key, value in event.get('headers', {}).items():
+        environ[f'HTTP_{key.upper().replace("-", "_")}'] = value
+    
+    response = {'statusCode': 200, 'headers': {}, 'body': ''}
+    
+    def start_response(status, headers):
+        response['statusCode'] = int(status.split()[0])
+        for header, value in headers:
+            response['headers'][header] = value
+    
+    result = app(environ, start_response)
+    response['body'] = ''.join(result)
+    
+    return response
+
+# Alternative simpler handler for Vercel
+app.wsgi_app = app.wsgi_app
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
