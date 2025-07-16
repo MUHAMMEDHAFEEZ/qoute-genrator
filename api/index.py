@@ -5,19 +5,12 @@ Arabic Quote Generator API for Vercel
 مولد اقتباسات المشاهير العرب المسلمين - API
 """
 
-import os
-import sys
 from flask import Flask, jsonify, request, Response
 import random
 from datetime import datetime
 
-# Ensure proper encoding
-if sys.version_info >= (3, 0):
-    import codecs
-    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer)
-    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer)
-
 app = Flask(__name__)
+app.config['JSON_AS_ASCII'] = False
 
 # اقتباسات المشاهير العرب المسلمين
 quotes_data = {
@@ -92,14 +85,17 @@ def create_quote_svg(quote, personality):
     
     # تقسيم النص لعدة أسطر إذا كان طويلاً
     lines = []
-    if len(quote) > 50:
+    max_chars = 45
+    if len(quote) > max_chars:
         words = quote.split()
         current_line = ""
         for word in words:
-            if len(current_line + " " + word) <= 50:
-                current_line += " " + word if current_line else word
+            test_line = current_line + " " + word if current_line else word
+            if len(test_line) <= max_chars:
+                current_line = test_line
             else:
-                lines.append(current_line)
+                if current_line:
+                    lines.append(current_line)
                 current_line = word
         if current_line:
             lines.append(current_line)
@@ -108,11 +104,19 @@ def create_quote_svg(quote, personality):
     
     # حساب الأبعاد
     line_height = 35
-    padding = 50
+    padding = 40
     width = 600
-    height = padding * 2 + len(lines) * line_height + 100
+    height = padding * 2 + len(lines) * line_height + 120
     
-    svg = f'''<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">
+    # تنظيف النصوص
+    clean_lines = []
+    for line in lines:
+        clean_line = line.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
+        clean_lines.append(clean_line)
+    
+    clean_personality = personality.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
+    
+    svg_content = f'''<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">
     <defs>
         <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
@@ -120,108 +124,54 @@ def create_quote_svg(quote, personality):
         </linearGradient>
     </defs>
     
-    <rect width="100%" height="100%" fill="url(#bg)" rx="20"/>
-    <rect x="15" y="15" width="{width-30}" height="{height-30}" 
-          fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2" rx="15"/>
-    
-    <text x="40" y="60" font-family="serif" font-size="50" fill="#FFD700" opacity="0.8">"</text>
+    <rect width="100%" height="100%" fill="url(#bg)" rx="15"/>
+    <rect x="10" y="10" width="{width-20}" height="{height-20}" 
+          fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1" rx="10"/>
     '''
     
     # إضافة أسطر النص
-    y_pos = 90
-    for i, line in enumerate(lines):
-        font_size = 20 if len(lines) <= 2 else 18
-        # تنظيف النص من الرموز التي قد تسبب مشاكل
-        clean_line = line.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-        svg += f'''
-    <text x="{width//2}" y="{y_pos}" font-family="Arial, sans-serif" font-size="{font_size}" 
-          fill="white" text-anchor="middle" font-weight="400">{clean_line}</text>'''
+    y_pos = 80
+    for line in clean_lines:
+        font_size = 22 if len(clean_lines) <= 2 else 18
+        svg_content += f'''
+    <text x="{width//2}" y="{y_pos}" 
+          font-family="Arial, sans-serif" 
+          font-size="{font_size}" 
+          fill="white" 
+          text-anchor="middle" 
+          font-weight="normal">{line}</text>'''
         y_pos += line_height
     
     # إضافة اسم المؤلف
-    clean_personality = personality.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-    svg += f'''
-    <text x="{width//2}" y="{y_pos + 40}" font-family="Arial, sans-serif" font-size="18" 
-          fill="#FFD700" text-anchor="middle" font-weight="bold">— {clean_personality}</text>
+    svg_content += f'''
+    <text x="{width//2}" y="{y_pos + 30}" 
+          font-family="Arial, sans-serif" 
+          font-size="16" 
+          fill="#FFD700" 
+          text-anchor="middle" 
+          font-weight="bold">— {clean_personality}</text>
     
-    <text x="{width-60}" y="{height-40}" font-family="serif" font-size="50" fill="#FFD700" opacity="0.8">"</text>
-    
-    <text x="25" y="{height-15}" font-family="Arial, sans-serif" font-size="12" 
-          fill="rgba(255,255,255,0.6)">{datetime.now().strftime('%Y-%m-%d')}</text>
-          
+    <text x="20" y="{height-15}" 
+          font-family="Arial, sans-serif" 
+          font-size="11" 
+          fill="rgba(255,255,255,0.5)">{datetime.now().strftime('%Y-%m-%d')}</text>
     </svg>'''
     
-    return svg
+    return svg_content
 
 @app.route('/')
 def home():
     """الصفحة الرئيسية"""
-    return '''
-    <!DOCTYPE html>
-    <html dir="rtl" lang="ar">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>API مولد اقتباسات المشاهير العرب</title>
-        <style>
-            body { 
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white; padding: 20px; text-align: center; margin: 0;
-                min-height: 100vh; display: flex; align-items: center; justify-content: center;
-            }
-            .container { 
-                max-width: 900px; margin: 0 auto; 
-                background: rgba(255,255,255,0.15); padding: 40px; 
-                border-radius: 20px; backdrop-filter: blur(10px);
-                box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
-            }
-            h1 { color: #FFD700; margin-bottom: 30px; font-size: 2.5em; }
-            .endpoint { 
-                background: rgba(255,255,255,0.2); padding: 20px; margin: 15px 0;
-                border-radius: 15px; border-left: 5px solid #FFD700;
-                text-align: right;
-            }
-            .endpoint h3 { color: #FFD700; margin-bottom: 10px; }
-            .endpoint p { font-family: 'Courier New', monospace; background: rgba(0,0,0,0.2); 
-                         padding: 10px; border-radius: 8px; }
-            .demo { margin: 30px 0; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>🌟 API مولد اقتباسات المشاهير العرب المسلمين</h1>
-            
-            <div class="demo">
-                <h2>🖼️ معاينة مباشرة:</h2>
-                <img src="/api/quote/image" alt="اقتباس ملهم" style="max-width: 100%; border-radius: 15px; margin: 20px 0;">
-            </div>
-            
-            <div class="endpoint">
-                <h3>🖼️ صورة الاقتباس</h3>
-                <p>GET /api/quote/image</p>
-            </div>
-            <div class="endpoint">
-                <h3>📄 اقتباس JSON</h3>
-                <p>GET /api/quote</p>
-            </div>
-            <div class="endpoint">
-                <h3>👥 قائمة الشخصيات</h3>
-                <p>GET /api/personalities</p>
-            </div>
-            <div class="endpoint">
-                <h3>🎯 اقتباس محدد</h3>
-                <p>GET /api/quote?personality=ابن_سينا</p>
-            </div>
-            
-            <div style="margin-top: 40px; font-size: 0.9em; opacity: 0.8;">
-                <p>🚀 جاهز للاستخدام في GitHub README ومواقع الويب</p>
-                <p>💡 استخدم: &lt;img src="YOUR_URL/api/quote/image" /&gt;</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    '''
+    return {
+        'name': 'Arabic Quote Generator API',
+        'status': 'active',
+        'endpoints': {
+            'quote': '/api/quote',
+            'image': '/api/quote/image',
+            'personalities': '/api/personalities',
+            'health': '/health'
+        }
+    }
 
 @app.route('/api/quote')
 def api_quote():
@@ -257,37 +207,36 @@ def api_quote():
 def api_quote_image():
     """API للحصول على صورة SVG للاقتباس"""
     try:
-        personality_param = request.args.get('personality', '').replace('_', ' ')
-        
+        personality_param = request.args.get('personality', '')
         if personality_param:
+            personality_param = personality_param.replace('_', ' ')
             personality, quote = get_quote_by_personality(personality_param)
             if not personality:
                 personality, quote = get_random_quote()
         else:
             personality, quote = get_random_quote()
         
-        # إنشاء SVG
         svg_content = create_quote_svg(quote, personality)
         
-        response = Response(svg_content, mimetype='image/svg+xml')
-        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = '0'
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Content-Type'] = 'image/svg+xml; charset=utf-8'
-        
-        return response
-    except Exception as e:
-        # إرجاع SVG خطأ بسيط
+        return Response(
+            svg_content, 
+            mimetype='image/svg+xml',
+            headers={
+                'Cache-Control': 'no-cache',
+                'Access-Control-Allow-Origin': '*'
+            }
+        )
+    except:
+        # خطأ بسيط
         error_svg = '''<svg width="600" height="200" xmlns="http://www.w3.org/2000/svg">
-            <rect width="100%" height="100%" fill="#ff6b6b"/>
-            <text x="300" y="100" font-family="Arial" font-size="18" fill="white" text-anchor="middle">
-                Error loading quote
-            </text>
-        </svg>'''
-        response = Response(error_svg, mimetype='image/svg+xml')
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        return response
+<rect width="100%" height="100%" fill="#ff4757"/>
+<text x="300" y="110" font-family="Arial" font-size="16" fill="white" text-anchor="middle">Service Error</text>
+</svg>'''
+        return Response(
+            error_svg, 
+            mimetype='image/svg+xml',
+            headers={'Access-Control-Allow-Origin': '*'}
+        )
 
 @app.route('/api/personalities')
 def api_personalities():
@@ -348,6 +297,11 @@ def internal_error(error):
         'error': 'خطأ في الخادم',
         'status': 'error'
     }), 500
+
+@app.route('/test')
+def test():
+    """Simple test endpoint"""
+    return {'status': 'working', 'message': 'API is running'}
 
 # For Vercel serverless deployment
 if __name__ == '__main__':
