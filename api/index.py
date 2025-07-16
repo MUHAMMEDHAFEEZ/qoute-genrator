@@ -5,9 +5,17 @@ Arabic Quote Generator API for Vercel
 مولد اقتباسات المشاهير العرب المسلمين - API
 """
 
+import os
+import sys
 from flask import Flask, jsonify, request, Response
 import random
 from datetime import datetime
+
+# Ensure proper encoding
+if sys.version_info >= (3, 0):
+    import codecs
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer)
+    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer)
 
 app = Flask(__name__)
 
@@ -104,46 +112,40 @@ def create_quote_svg(quote, personality):
     width = 600
     height = padding * 2 + len(lines) * line_height + 100
     
-    svg = f'''<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    svg = f'''<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">
     <defs>
         <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
             <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
         </linearGradient>
-        <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="2" dy="2" stdDeviation="3" flood-color="rgba(0,0,0,0.3)"/>
-        </filter>
     </defs>
     
-    <!-- خلفية -->
-    <rect width="100%" height="100%" fill="url(#bg)" rx="20" filter="url(#shadow)"/>
-    
-    <!-- إطار -->
+    <rect width="100%" height="100%" fill="url(#bg)" rx="20"/>
     <rect x="15" y="15" width="{width-30}" height="{height-30}" 
           fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2" rx="15"/>
     
-    <!-- رمز الاقتباس الافتتاحي -->
-    <text x="40" y="60" font-family="Georgia, serif" font-size="50" fill="#FFD700" opacity="0.8">❝</text>
+    <text x="40" y="60" font-family="serif" font-size="50" fill="#FFD700" opacity="0.8">"</text>
     '''
     
     # إضافة أسطر النص
     y_pos = 90
     for i, line in enumerate(lines):
         font_size = 20 if len(lines) <= 2 else 18
+        # تنظيف النص من الرموز التي قد تسبب مشاكل
+        clean_line = line.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
         svg += f'''
     <text x="{width//2}" y="{y_pos}" font-family="Arial, sans-serif" font-size="{font_size}" 
-          fill="white" text-anchor="middle" font-weight="400">{line}</text>'''
+          fill="white" text-anchor="middle" font-weight="400">{clean_line}</text>'''
         y_pos += line_height
     
     # إضافة اسم المؤلف
+    clean_personality = personality.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
     svg += f'''
     <text x="{width//2}" y="{y_pos + 40}" font-family="Arial, sans-serif" font-size="18" 
-          fill="#FFD700" text-anchor="middle" font-weight="bold">— {personality}</text>
+          fill="#FFD700" text-anchor="middle" font-weight="bold">— {clean_personality}</text>
     
-    <!-- رمز الاقتباس الختامي -->
-    <text x="{width-60}" y="{height-40}" font-family="Georgia, serif" font-size="50" fill="#FFD700" opacity="0.8">❞</text>
+    <text x="{width-60}" y="{height-40}" font-family="serif" font-size="50" fill="#FFD700" opacity="0.8">"</text>
     
-    <!-- تاريخ التحديث -->
     <text x="25" y="{height-15}" font-family="Arial, sans-serif" font-size="12" 
           fill="rgba(255,255,255,0.6)">{datetime.now().strftime('%Y-%m-%d')}</text>
           
@@ -272,20 +274,20 @@ def api_quote_image():
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
         response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Content-Type'] = 'image/svg+xml; charset=utf-8'
         
         return response
     except Exception as e:
-        # إرجاع SVG خطأ
-        error_svg = f'''<svg width="600" height="200" xmlns="http://www.w3.org/2000/svg">
+        # إرجاع SVG خطأ بسيط
+        error_svg = '''<svg width="600" height="200" xmlns="http://www.w3.org/2000/svg">
             <rect width="100%" height="100%" fill="#ff6b6b"/>
             <text x="300" y="100" font-family="Arial" font-size="18" fill="white" text-anchor="middle">
-                خطأ في تحميل الاقتباس
-            </text>
-            <text x="300" y="130" font-family="Arial" font-size="14" fill="white" text-anchor="middle">
-                {str(e)[:50]}
+                Error loading quote
             </text>
         </svg>'''
-        return Response(error_svg, mimetype='image/svg+xml')
+        response = Response(error_svg, mimetype='image/svg+xml')
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response
 
 @app.route('/api/personalities')
 def api_personalities():
@@ -330,55 +332,23 @@ def api_info():
         'total_quotes': sum(len(quotes) for quotes in quotes_data.values())
     })
 
-# For Vercel deployment
-if __name__ != '__main__':
-    # This is running on Vercel
-    app.debug = False
+@app.errorhandler(404)
+def not_found(error):
+    """معالج الصفحات غير الموجودة"""
+    return jsonify({
+        'error': 'الصفحة غير موجودة',
+        'available_endpoints': ['/api/quote', '/api/quote/image', '/api/personalities', '/health'],
+        'status': 'error'
+    }), 404
 
-# Vercel serverless function handler
-def handler(event, context):
-    """Handler for Vercel serverless functions"""
-    from werkzeug.wrappers import Request, Response as WerkzeugResponse
-    from werkzeug.serving import WSGIRequestHandler
-    import io
-    
-    # Create a WSGI environ from the event
-    environ = {
-        'REQUEST_METHOD': event.get('httpMethod', 'GET'),
-        'PATH_INFO': event.get('path', '/'),
-        'QUERY_STRING': event.get('queryStringParameters', ''),
-        'CONTENT_TYPE': event.get('headers', {}).get('content-type', ''),
-        'CONTENT_LENGTH': str(len(event.get('body', ''))),
-        'HTTP_HOST': event.get('headers', {}).get('host', 'localhost'),
-        'SERVER_NAME': 'localhost',
-        'SERVER_PORT': '80',
-        'wsgi.version': (1, 0),
-        'wsgi.url_scheme': 'https',
-        'wsgi.input': io.StringIO(event.get('body', '')),
-        'wsgi.errors': io.StringIO(),
-        'wsgi.multithread': False,
-        'wsgi.multiprocess': True,
-        'wsgi.run_once': False
-    }
-    
-    # Add headers to environ
-    for key, value in event.get('headers', {}).items():
-        environ[f'HTTP_{key.upper().replace("-", "_")}'] = value
-    
-    response = {'statusCode': 200, 'headers': {}, 'body': ''}
-    
-    def start_response(status, headers):
-        response['statusCode'] = int(status.split()[0])
-        for header, value in headers:
-            response['headers'][header] = value
-    
-    result = app(environ, start_response)
-    response['body'] = ''.join(result)
-    
-    return response
+@app.errorhandler(500)
+def internal_error(error):
+    """معالج أخطاء الخادم"""
+    return jsonify({
+        'error': 'خطأ في الخادم',
+        'status': 'error'
+    }), 500
 
-# Alternative simpler handler for Vercel
-app.wsgi_app = app.wsgi_app
-
+# For Vercel serverless deployment
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
